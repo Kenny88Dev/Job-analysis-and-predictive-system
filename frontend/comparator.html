@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Comparator - AI Workforce Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL LAYOUT --- */
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- SIDEBAR & MENU HOVER EFFECT (Matched to Predictor) --- */
+        .sidebar {
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 10;
+        }
+
+        .sidebar-content {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .brand-logo {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #1e293b;
+            text-decoration: none;
+            margin-bottom: 40px;
+            display: block;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        /* --- NAV BUTTON STYLES --- */
+        .nav-btn {
+            position: relative; 
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #64748b;
+            font-weight: 500;
+            border-radius: 0 8px 8px 0; 
+            border-left: 4px solid transparent; 
+            overflow: hidden; 
+            transition: all 0.3s ease;
+        }
+
+        /* Text Layering */
+        .nav-btn span, .nav-btn i {
+            position: relative;
+            z-index: 2; 
+        }
+
+        /* Slide-in Background */
+        .nav-btn::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0; 
+            background-color: #2563eb; 
+            z-index: 0; 
+            transition: width 0.3s ease-in-out; 
+        }
+
+        /* Hover State */
+        .nav-btn:hover {
+            color: white; 
+            border-left-color: #1d4ed8; 
+            padding-left: 24px; 
+        }
+
+        .nav-btn:hover::after {
+            width: 100%; 
+        }
+
+        /* Active State */
+        .nav-btn.active {
+            color: white; 
+            border-left-color: #2563eb;
+            background-color: transparent; 
+        }
+
+        .nav-btn.active::after {
+            width: 100%; /* Keep blue background persistent */
+        }
+
+        /* Footer */
+        .sidebar-footer {
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 20px;
+        }
+
+        .back-home-link {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s;
+        }
+        .back-home-link:hover { color: #1e293b; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 40px;
+        }
+
+        .content-header { margin-bottom: 32px; }
+        .content-header h1 {
+            font-size: 1.8rem;
+            color: #0f172a;
+            margin: 0 0 8px 0;
+        }
+        .content-header p {
+            color: #64748b;
+            margin-top: 0;
+        }
+
+        /* --- COMPARATOR SPECIFIC STYLES --- */
+        .comparison-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+        }
+
+        /* Autocomplete Styles */
+        .autocomplete-wrapper { position: relative; flex: 1; }
+        .job-input { width: 100%; padding: 12px 16px; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Inter', sans-serif; transition: all 0.2s; box-sizing: border-box; }
+        .job-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 4px; max-height: 300px; overflow-y: auto; z-index: 100; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: none; }
+        .suggestions-list.active { display: block; }
+        .suggestion-item { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; color: #1e293b; transition: background 0.1s; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover, .suggestion-item.focused { background-color: #f1f5f9; color: #3b82f6; }
+        .suggestion-match { font-weight: 700; color: #3b82f6; }
+
+        .compare-inputs { display: flex; align-items: center; gap: 15px; margin-bottom: 24px; }
+        .vs-text { font-weight: 700; color: #64748b; }
+        .compare-button {
+            background-color: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; white-space: nowrap;
+        }
+        .compare-button:hover { background-color: #1d4ed8; }
+
+        .comp-result { margin-top: 30px; padding-top: 20px; border-top: 1px dashed rgba(0,0,0,0.1); }
+
+        /* Loader */
+        .loader {
+            width: 80px; 
+            height: 45px;
+            color: #3b82f6; 
+            margin: 20px auto; 
+            --c: radial-gradient(farthest-side, currentColor 96%, #0000);
+            background: 
+                var(--c) 100% 100% / 30% 60%,
+                var(--c) 70%  0    / 50% 100%,
+                var(--c) 0    100% / 36% 68%,
+                var(--c) 27%  18%  / 26% 40%,
+                linear-gradient(currentColor 0 0) bottom / 67% 58%;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+        .loader:after {
+            content: ""; position: absolute; inset: 0; background: inherit; opacity: 0.4; animation: l7 1s infinite;
+        }
+        @keyframes l7 { to { transform: scale(1.8); opacity: 0; } }
+
+        /* Visual Appeal Styles */
+        .result-card-wrapper { 
+            display:flex; 
+            align-items:stretch; 
+            justify-content:space-between; 
+            text-align:center; 
+            margin-top:20px; 
+            gap:24px;
+        }
+        .result-card {
+            flex: 1;
+            padding: 24px;
+            border-radius: 16px;
+            border: 2px solid transparent; 
+            transition: all 0.4s ease;
+            background: rgba(255,255,255,0.6);
+        }
+        .glow-danger {
+            border-color: #ef4444; 
+            background: linear-gradient(135deg, rgba(254,242,242,0.9) 0%, rgba(255,255,255,0.95) 100%);
+            box-shadow: 0 8px 30px rgba(239, 68, 68, 0.2); 
+            transform: translateY(-4px); 
+        }
+        .glow-neutral {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            opacity: 0.8; 
+        }
+        .risk-score-display {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body class="services-page">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <a href="homepage.html" class="brand-logo">Home Page
+                </a>
+                <nav class="sidebar-nav">
+                    <a href="predictor.html" class="nav-button nav-btn">
+                        <span>Predictor</span>
+                    </a>
+                    <a href="market_index.html" class="nav-button nav-btn">
+                        <span>Market Index</span>
+                    </a>
+                    <a href="risk_cloud.html" class="nav-button nav-btn">
+                        <span>Risk Cloud</span>
+                    </a>
+                    <a href="leaderboard.html" class="nav-button nav-btn">
+                        <span>Leaderboard</span>
+                    </a>
+                    <a href="comparator.html" class="nav-button nav-btn active">
+                        <span>Comparator</span>
+                    </a>
+                    <a href="pathfinder.html" class="nav-button nav-btn">
+                        <span>Pathfinder</span>
+                    </a>
+                </nav>
+                <div class="sidebar-footer">
+                    <a href="homepage.html" class="back-home-link">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back Home</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Job Comparator</h1>
+                <p>Head-to-head risk analysis of job titles.</p>
+            </div>
+
+            <div class="comparison-card glass-card">
+                <div class="compare-inputs">
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="inputJob1" class="job-input" placeholder="Enter preferred job title A (e.g. Data Entry Keyer)..." autocomplete="off">
+                        <div id="listJob1" class="suggestions-list"></div>
+                    </div>
+                    <span class="vs-text">VS</span>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="inputJob2" class="job-input" placeholder="Enter preferred job title B (e.g. Software Engineers)..." autocomplete="off">
+                        <div id="listJob2" class="suggestions-list"></div>
+                    </div>
+                    <button onclick="compareJobs()" class="compare-button">
+                        <i class="fas fa-balance-scale"></i>
+                        Compare
+                    </button>
+                </div>
+
+                <div id="compResult" class="comp-result">
+                    <p style="text-align:center; color:#64748b;">Select two occupations above and click 'Compare'.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000'; 
+        let allJobs = []; 
+        let comparisonChart = null; // Variable to hold Chart.js instance
+
+        // --- CHART UTILITY ---
+        function renderComparisonChart(j1Title, j2Title, r1Score, r2Score) {
+            const chartCanvas = document.getElementById('riskComparisonChart');
+            if (!chartCanvas) return;
+
+            // Destroy existing chart instance if it exists
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+
+            const RISK_THRESHOLD = 2.05;
+            const MAX_SCORE = 5.0; 
+
+            const data = {
+                labels: [j1Title, j2Title],
+                datasets: [
+                    {
+                        label: 'Automation Risk Score',
+                        data: [r1Score, r2Score],
+                        backgroundColor: [
+                            r1Score >= RISK_THRESHOLD ? 'rgba(239, 68, 68, 0.9)' : 'rgba(16, 185, 129, 0.9)',
+                            r2Score >= RISK_THRESHOLD ? 'rgba(239, 68, 68, 0.9)' : 'rgba(16, 185, 129, 0.9)',
+                        ],
+                        borderColor: 'white',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }
+                ]
+            };
+
+            const config = {
+                type: 'bar',
+                data: data,
+                options: {
+                    indexAxis: 'y', // Horizontal bars
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'Risk Score Comparison (Scale 0-5)',
+                            font: { size: 14, weight: '600' },
+                            color: '#1e293b'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Score: ${context.parsed.x.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: MAX_SCORE,
+                            ticks: { stepSize: 1 },
+                            grid: { display: true, drawBorder: false, color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            };
+            
+            comparisonChart = new Chart(chartCanvas, config);
+        }
+
+        // 1. Fetch Data
+        async function loadJobData() {
+            // Note: This function remains separate for clarity, but in a production setup, 
+            // you would ensure data loading happens only once (likely in script.js)
+            try {
+                const res = await fetch(`${API_BASE}/api/stats`);
+                const data = await res.json();
+                allJobs = data.top_risky_jobs || []; 
+                console.log(`Loaded ${allJobs.length} jobs for autocomplete.`);
+            } catch (e) {
+                console.error("Failed to load job data", e);
+            }
+        }
+
+        // 2. Setup Autocomplete (Remains same as provided)
+        function setupAutocomplete(inputId, listId) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            let currentFocus = -1;
+
+            input.addEventListener('input', function(e) {
+                const val = this.value;
+                closeAllLists();
+                if (!val) return false;
+                currentFocus = -1;
+                const matches = allJobs.filter(job => job.Title.toLowerCase().startsWith(val.toLowerCase()));
+                if (matches.length === 0) return;
+                list.classList.add('active');
+                matches.slice(0, 10).forEach(job => {
+                    const div = document.createElement("div");
+                    div.className = "suggestion-item";
+                    div.innerHTML = `<span class="suggestion-match">${job.Title.substr(0, val.length)}</span>${job.Title.substr(val.length)}<input type='hidden' value="${job.Title}">`;
+                    div.addEventListener("click", function() {
+                        input.value = this.getElementsByTagName("input")[0].value;
+                        closeAllLists();
+                    });
+                    list.appendChild(div);
+                });
+            });
+
+            input.addEventListener("keydown", function(e) {
+                let x = list.getElementsByTagName("div");
+                if (e.keyCode == 40) { currentFocus++; addActive(x); }
+                else if (e.keyCode == 38) { currentFocus--; addActive(x); }
+                else if (e.keyCode == 13) { e.preventDefault(); if (currentFocus > -1 && x) x[currentFocus].click(); }
+            });
+
+            function addActive(x) {
+                if (!x) return false;
+                removeActive(x);
+                if (currentFocus >= x.length) currentFocus = 0;
+                if (currentFocus < 0) currentFocus = (x.length - 1);
+                x[currentFocus].classList.add("focused");
+                x[currentFocus].scrollIntoView({ block: 'nearest' });
+            }
+            function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove("focused"); }
+            function closeAllLists(elmnt) {
+                const x = document.getElementsByClassName("suggestions-list");
+                for (let i = 0; i < x.length; i++) {
+                    if (elmnt != x[i] && elmnt != input) {
+                        x[i].classList.remove('active');
+                        x[i].innerHTML = "";
+                    }
+                }
+            }
+            document.addEventListener("click", function (e) { closeAllLists(e.target); });
+        }
+
+        // 3. Comparison Logic
+        async function compareJobs() {
+            const j1 = document.getElementById('inputJob1').value;
+            const j2 = document.getElementById('inputJob2').value;
+            const resDiv = document.getElementById('compResult');
+
+            if (!j1 || !j2) {
+                resDiv.innerHTML = '<p style="text-align:center; color:#ef4444;">Please select two occupations.</p>';
+                return;
+            }
+
+            // Show Loader
+            resDiv.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    <div class="loader"></div>
+                    <p style="margin-top:10px; font-weight:500; color:#3b82f6;">Analyzing Risks...</p>
+                </div>
+            `;
+
+            try {
+                const [r1, r2] = await Promise.all([
+                    fetch(`${API_BASE}/api/compare`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:j1})}).then(r=>r.json()),
+                    fetch(`${API_BASE}/api/compare`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:j2})}).then(r=>r.json())
+                ]);
+
+                // Determine Winner
+                const RISK_THRESHOLD = 2.05;
+                let class1 = 'glow-neutral';
+                let class2 = 'glow-neutral';
+
+                // Safety check for risk existence and type
+                const score1 = (r1.found && !isNaN(r1.risk)) ? parseFloat(r1.risk) : -1;
+                const score2 = (r2.found && !isNaN(r2.risk)) ? parseFloat(r2.risk) : -1;
+
+                if (score1 > score2) {
+                    class1 = 'glow-danger'; // Higher score = Higher Risk
+                    class2 = 'glow-neutral';
+                } else if (score2 > score1) {
+                    class1 = 'glow-neutral';
+                    class2 = 'glow-danger';
+                }
+
+                // Helper to format
+                const format = (r, score) => {
+                    if(!r.found) return { html: `<span style='color:#ef4444; font-weight:700;'>Occupation Not Found in Dataset</span>`, title: r.title };
+                    const color = score >= RISK_THRESHOLD ? '#ef4444' : '#10b981';
+                    const label = score >= RISK_THRESHOLD ? 'HIGH RISK' : 'LOW RISK';
+                    const taskText = r.task ? r.task : "No description provided.";
+
+                    return {
+                        title: r.title,
+                        html: `
+                            <div style="margin-bottom:20px;">
+                                <div class="risk-score-display" style="color:${color};">${score.toFixed(2)}</div>
+                                <span style="color:${color}; font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">${label}</span>
+                            </div>
+                            
+                            <div style="text-align:left; background:rgba(0,0,0,0.02); padding:16px; border-radius:12px; border:1px solid rgba(0,0,0,0.05);">
+                                <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:#64748b; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                    <i class="fas fa-briefcase"></i> Task Snapshot
+                                </div>
+                                <div style="font-size:0.95rem; color:#334155; line-height:1.6;">
+                                    ${taskText}
+                                </div>
+                            </div>
+                        `
+                    };
+                };
+
+                const d1 = format(r1, score1);
+                const d2 = format(r2, score2);
+                
+                // Construct the new HTML content for compResult
+                resDiv.innerHTML = `
+                    <div style="height:250px; margin-bottom: 30px;">
+                        <canvas id="riskComparisonChart" style="max-height: 250px;"></canvas>
+                    </div>
+
+                    <div class="result-card-wrapper">
+                        <div class="result-card ${class1}">
+                            <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:12px;">
+                                ${d1.title}
+                            </h4>
+                            ${d1.html}
+                        </div>
+
+                        <div style="align-self:center; font-weight: 900; font-size: 1.5rem; color: #cbd5e1; margin-top: -150px;">VS</div>
+
+                        <div class="result-card ${class2}">
+                            <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:12px;">
+                                ${d2.title}
+                            </h4>
+                            ${d2.html}
+                        </div>
+                    </div>
+                `;
+
+                // Render the Chart
+                renderComparisonChart(d1.title, d2.title, score1, score2);
+
+            } catch (e) {
+                console.error(e);
+                resDiv.innerHTML = '<p style="text-align:center; color:red;">Connection Error</p>';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadJobData();
+            setupAutocomplete('inputJob1', 'listJob1');
+            setupAutocomplete('inputJob2', 'listJob2');
+        });
+    </script>
+</body>
+</html>

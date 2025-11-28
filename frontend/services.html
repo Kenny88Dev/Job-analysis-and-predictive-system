@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workforce Intelligence - Services</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="services-page">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <!-- Brand Logo -->
+                <a href="homepage.html" class="brand-logo">
+                    <i class="fas fa-robot"></i>
+                    <span>AI Intel</span>
+                </a>
+
+                <!-- Navigation Buttons -->
+                <nav class="sidebar-nav">
+                    <button class="nav-button nav-btn" data-tab="predictor" onclick="switchTab('predictor')">
+                        <i class="fas fa-microchip"></i>
+                        <span>Predictor</span>
+                    </button>
+                    <button class="nav-button nav-btn" data-tab="market" onclick="switchTab('market')">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Market Index</span>
+                    </button>
+                    <button class="nav-button nav-btn" data-tab="cloud" onclick="switchTab('cloud')">
+                        <i class="fas fa-cloud"></i>
+                        <span>Risk Cloud</span>
+                    </button>
+                    <button class="nav-button nav-btn" data-tab="leaderboard" onclick="switchTab('leaderboard')">
+                        <i class="fas fa-list-ol"></i>
+                        <span>Leaderboard</span>
+                    </button>
+                    <button class="nav-button nav-btn" data-tab="comparator" onclick="switchTab('comparator')">
+                        <i class="fas fa-scale-balanced"></i>
+                        <span>Comparator</span>
+                    </button>
+                </nav>
+
+                <!-- Footer Link -->
+                <div class="sidebar-footer">
+                    <a href="homepage.html" class="back-home-link">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back Home</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Predictor Tab -->
+            <div id="predictorTab" class="tab-content">
+                <div class="content-header">
+                    <h1>Task Predictor</h1>
+                    <p>Analyze specific tasks for automation vulnerability.</p>
+                </div>
+                <div class="content-body">
+                    <div class="info-card">
+                        <p>This section will contain the Task Predictor functionality.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Index Tab -->
+            <div id="marketTab" class="tab-content hidden">
+                <div class="content-header">
+                    <h1>Market Index</h1>
+                    <p>Global distribution of automation risk across all jobs.</p>
+                </div>
+                <div class="content-body">
+                    <div class="info-card">
+                        <p>This section will contain the Market Index visualization.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Cloud Tab -->
+            <div id="cloudTab" class="tab-content hidden">
+                <div class="content-header">
+                    <h1>Risk Cloud</h1>
+                    <p>Visualizing the linguistic patterns of high-risk work.</p>
+                </div>
+                <div class="content-body">
+                    <div class="info-card">
+                        <p>This section will contain the Risk Cloud visualization.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Tab -->
+            <div id="leaderboardTab" class="tab-content hidden">
+                <div class="content-header">
+                    <h1>Leaderboard</h1>
+                    <p>Top 10 occupations with highest automation scores.</p>
+                </div>
+                <div class="content-body">
+                    <div class="info-card">
+                        <p>This section will contain the Leaderboard rankings.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparator Tab -->
+            <div id="comparatorTab" class="tab-content hidden">
+                <div class="content-header">
+                    <h1>Comparator</h1>
+                    <p>Head-to-head risk analysis of job titles.</p>
+                </div>
+                <div class="content-body">
+                    <div class="info-card">
+                        <p>This section will contain the Comparator functionality.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Small script to automatically open the correct tab based on URL parameter
+        // This runs after script.js is loaded
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            if (tabParam) {
+                // Find and click the appropriate button to trigger switchTab
+                const button = document.querySelector(`[data-tab="${tabParam}"]`);
+                if (button) {
+                    button.click();
+                }
+            } else {
+                // Default to predictor if no tab specified
+                const defaultButton = document.querySelector('[data-tab="predictor"]');
+                if (defaultButton) {
+                    defaultButton.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

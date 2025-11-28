@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Pathfinder - AI Workforce Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL LAYOUT --- */
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: 260px; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 10; }
+        .sidebar-content { padding: 24px; display: flex; flex-direction: column; height: 100%; }
+        .brand-logo { font-size: 1.2rem; font-weight: 800; color: #1e293b; text-decoration: none; margin-bottom: 40px; display: block; }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        .nav-btn { position: relative; display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #64748b; font-weight: 500; border-radius: 0 8px 8px 0; border-left: 4px solid transparent; overflow: hidden; transition: all 0.3s ease; }
+        .nav-btn span, .nav-btn i { position: relative; z-index: 2; }
+        .nav-btn::after { content: ""; position: absolute; top: 0; left: 0; height: 100%; width: 0; background-color: #2563eb; z-index: 0; transition: width 0.3s ease-in-out; }
+        .nav-btn:hover { color: white; border-left-color: #1d4ed8; padding-left: 24px; }
+        .nav-btn:hover::after { width: 100%; }
+        .nav-btn.active { color: white; border-left-color: #2563eb; background-color: transparent; }
+        .nav-btn.active::after { width: 100%; }
+        .sidebar-footer { margin-top: auto; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+        .back-home-link { color: #94a3b8; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+        .back-home-link:hover { color: #1e293b; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content { margin-left: 260px; flex: 1; padding: 40px; }
+        .content-header { margin-bottom: 32px; }
+        .content-header h1 { font-size: 1.8rem; color: #0f172a; margin: 0 0 8px 0; }
+        .content-header p { color: #64748b; margin-top: 0; }
+
+        /* --- SEARCH INPUTS --- */
+        .glass-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .search-container { position: relative; max-width: 750px; margin: 0 auto 40px auto; display: flex; gap: 12px; align-items: center; z-index: 50; }
+        .autocomplete-wrapper { position: relative; flex: 1; }
+        .pathfinder-input { width: 100%; padding: 16px 24px; font-size: 1.1rem; border: 2px solid #e2e8f0; border-radius: 50px; outline: none; transition: all 0.3s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); font-family: 'Inter', sans-serif; box-sizing: border-box; }
+        .pathfinder-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+        .suggestions-list { position: absolute; top: 110%; left: 10px; right: 10px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; max-height: 300px; overflow-y: auto; z-index: 100; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); display: none; }
+        .suggestions-list.active { display: block; }
+        .suggestion-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; color: #1e293b; transition: background 0.1s; }
+        .suggestion-item:hover, .suggestion-item.focused { background-color: #f1f5f9; color: #3b82f6; }
+        .suggestion-match { font-weight: 700; color: #3b82f6; }
+        .filter-select { padding: 0 20px; height: 54px; font-size: 0.95rem; border: 2px solid #e2e8f0; border-radius: 50px; background: white; color: #475569; font-weight: 600; cursor: pointer; outline: none; min-width: 160px; }
+        .find-btn { height: 54px; padding: 0 32px; background: #3b82f6; color: white; border: none; border-radius: 50px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 6px -1px rgba(59,130,246,0.3); white-space: nowrap; }
+        .find-btn:hover { background: #2563eb; }
+
+        /* --- FLIP CARD STYLES --- */
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+        .path-card-container { background-color: transparent; height: 280px; perspective: 1000px; cursor: pointer; }
+        .path-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .path-card-container:hover .path-card-inner { transform: rotateY(180deg); }
+        .path-card-front, .path-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; box-sizing: border-box; }
+        .path-card-front { background-color: white; border: 1px solid #e2e8f0; color: #1e293b; }
+        .path-card-back { background: #8b5cf6; color: white; transform: rotateY(180deg); border: 1px solid #7c3aed; justify-content: flex-start; text-align: left; }
+        
+        .task-scroll { font-size: 0.9rem; line-height: 1.5; opacity: 0.95; overflow-y: auto; flex-grow: 1; margin: 10px 0; padding-right: 5px; width: 100%; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.4) transparent; }
+        .task-scroll::-webkit-scrollbar { width: 4px; }
+        .task-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 4px; }
+
+        .match-badge { position: absolute; top: 16px; right: 16px; background: #ecfdf5; color: #059669; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; }
+        .safe-score { font-size: 2.2rem; font-weight: 800; color: #10b981; margin: 12px 0; }
+        .view-btn { margin-top: auto; padding: 8px 20px; background: white; color: #8b5cf6; border: none; border-radius: 20px; font-weight: 600; cursor: pointer; transition: transform 0.2s; width: fit-content; align-self: center; }
+        .view-btn:hover { transform: scale(1.05); }
+
+        /* Loader */
+        .loader { width: 80px; aspect-ratio: 1; display: grid; animation: l14 4s infinite; margin: 40px auto; }
+        .loader::before, .loader::after { content: ""; grid-area: 1/1; border: 8px solid; border-radius: 50%; border-color: #ef4444 #ef4444 #0000 #0000; mix-blend-mode: darken; animation: l14 1s infinite linear; }
+        .loader::after { border-color: #0000 #0000 #3b82f6 #3b82f6; animation-direction: reverse; }
+        @keyframes l14 { 100%{transform: rotate(1turn)} }
+
+        /* --- HERO SECTION STYLES (Text Only) --- */
+        .hero-stats-container { 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
+            border-radius: 20px; 
+            padding: 40px; 
+            margin-bottom: 40px; 
+            color: white; 
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.3); 
+            display: none; 
+            align-items: center; 
+            justify-content: space-between; 
+            animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+        
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .hero-info h2 { margin: 0; font-size: 2rem; letter-spacing: -0.5px; }
+        .hero-info p { color: #94a3b8; margin: 5px 0 0 0; }
+        
+        /* New Text Score Styles */
+        .hero-score-wrapper { text-align: right; }
+        .hero-score-display { font-size: 4rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+        .hero-score-subtitle { font-size: 0.85rem; opacity: 0.7; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+        
+        .risk-badge { 
+            display: inline-block; 
+            padding: 8px 20px; 
+            border-radius: 50px; 
+            font-size: 0.9rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+    </style>
+</head>
+<body class="services-page">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <a href="homepage.html" class="brand-logo">Home Page</a>
+                <nav class="sidebar-nav">
+                    <a href="predictor.html" class="nav-button nav-btn"><span>Predictor</span></a>
+                    <a href="market_index.html" class="nav-button nav-btn"><span>Market Index</span></a>
+                    <a href="risk_cloud.html" class="nav-button nav-btn"><span>Risk Cloud</span></a>
+                    <a href="leaderboard.html" class="nav-button nav-btn"><span>Leaderboard</span></a>
+                    <a href="comparator.html" class="nav-button nav-btn"><span>Comparator</span></a>
+                    <a href="pathfinder.html" class="nav-button nav-btn active"><span>Pathfinder</span></a>
+                </nav>
+                <div class="sidebar-footer">
+                    <a href="homepage.html" class="back-home-link"><i class="fas fa-arrow-left"></i><span>Back Home</span></a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Career Pathfinder</h1>
+                <p>Explore similar alternatives career.</p>
+            </div>
+
+            <div class="search-container">
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="currentJob" class="pathfinder-input" placeholder="Enter your current job title (e.g. Data Entry Keyer)..." autocomplete="off">
+                    <div id="jobList" class="suggestions-list"></div>
+                </div>
+                
+                <select id="similarityFilter" class="filter-select">
+                    <option value="0.25">Min Match: 25%</option>
+                    <option value="0.50">Min Match: 50%</option>
+                    <option value="0.75">Min Match: 75%</option>
+                </select>
+
+                <button onclick="findPaths()" class="find-btn">
+                    Find
+                </button>
+            </div>
+
+            <div id="resultsArea">
+                <div id="currentAnalysis" class="hero-stats-container">
+                    <div class="hero-info">
+                        <div style="font-size:0.9rem; color:#64748b; margin-bottom:5px;">CURRENT OCCUPATION</div>
+                        <h2 id="heroTitle">Job Title</h2>
+                    </div>
+                    
+                    <div class="hero-score-wrapper">
+                        <div id="heroScore" class="hero-score-display">0.00</div>
+                        <div class="hero-score-subtitle">Automation Risk Score</div>
+                        <div id="heroBadge" class="risk-badge">CALCULATING</div>
+                    </div>
+                </div>
+
+                <div id="cardsGrid">
+                    <div class="glass-card" style="text-align:center; padding:40px; color:#64748b;">
+                        <i class="fas fa-route" style="font-size:3rem; margin-bottom:16px; opacity:0.3;"></i>
+                        <p>Enter your current job title above to see alternatives career paths.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000'; 
+        let allJobs = []; 
+
+        async function loadJobData() {
+            try {
+                const res = await fetch(`${API_BASE}/api/stats`);
+                const data = await res.json();
+                allJobs = data.top_risky_jobs || []; 
+            } catch (e) { console.error(e); }
+        }
+
+        function setupAutocomplete() {
+            const input = document.getElementById("currentJob");
+            const list = document.getElementById("jobList");
+            if(!input || !list) return;
+
+            let currentFocus = -1;
+
+            input.addEventListener('input', function(e) {
+                const val = this.value;
+                closeAllLists();
+                if (!val) return false;
+                currentFocus = -1;
+                const matches = allJobs.filter(job => job.Title.toLowerCase().startsWith(val.toLowerCase()));
+                if (matches.length === 0) return;
+
+                list.classList.add('active');
+                matches.slice(0, 10).forEach(job => {
+                    const div = document.createElement("div");
+                    div.className = "suggestion-item";
+                    div.innerHTML = `<span class="suggestion-match">${job.Title.substr(0, val.length)}</span>${job.Title.substr(val.length)}`;
+                    div.innerHTML += `<input type='hidden' value="${job.Title}">`;
+                    div.addEventListener("click", function() {
+                        input.value = this.getElementsByTagName("input")[0].value;
+                        closeAllLists();
+                    });
+                    list.appendChild(div);
+                });
+            });
+
+            input.addEventListener("keydown", function(e) {
+                let x = list.getElementsByTagName("div");
+                if (e.keyCode == 40) { currentFocus++; addActive(x); } 
+                else if (e.keyCode == 38) { currentFocus--; addActive(x); } 
+                else if (e.keyCode == 13) { e.preventDefault(); if (currentFocus > -1 && x) x[currentFocus].click(); else findPaths(); }
+            });
+
+            function addActive(x) {
+                if (!x) return false; removeActive(x);
+                if (currentFocus >= x.length) currentFocus = 0;
+                if (currentFocus < 0) currentFocus = (x.length - 1);
+                x[currentFocus].classList.add("focused");
+                x[currentFocus].scrollIntoView({block: 'nearest'});
+            }
+            function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove("focused"); }
+            function closeAllLists(elmnt) { if (elmnt != list && elmnt != input) { list.classList.remove('active'); list.innerHTML = ""; } }
+            document.addEventListener("click", function (e) { closeAllLists(e.target); });
+        }
+
+        // --- UPDATED SEARCH LOGIC ---
+        async function findPaths() {
+            const input = document.getElementById('currentJob').value;
+            const threshold = document.getElementById('similarityFilter').value;
+            
+            const heroSection = document.getElementById('currentAnalysis');
+            const cardsGrid = document.getElementById('cardsGrid');
+            const scoreText = document.getElementById('heroScore');
+
+            if(!input) return alert("Please enter a job title.");
+            
+            // RESET UI
+            cardsGrid.innerHTML = '<div class="loader"></div><p style="text-align:center; color:#3b82f6;">Analyzing career vectors...</p>';
+            heroSection.style.display = 'none';
+            scoreText.innerText = "0.00"; // Reset counter
+            
+            try {
+                // PARALLEL FETCH
+                const [statsRes, recRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/compare`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ query: input })
+                    }),
+                    fetch(`${API_BASE}/api/recommend`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ job_title: input, threshold: parseFloat(threshold) })
+                    })
+                ]);
+
+                const statsData = await statsRes.json();
+                const recData = await recRes.json();
+                
+                // 1. UPDATE HERO SECTION (Text Only)
+                if (statsData.found) {
+                    heroSection.style.display = 'flex';
+                    document.getElementById('heroTitle').innerText = statsData.title;
+                    
+                    // --- DIRECT ASSIGNMENT LOGIC ---
+                    let risk = parseFloat(statsData.risk);
+                    if (isNaN(risk)) risk = 0.0;
+                    
+                    // Set Text
+                    scoreText.innerText = risk.toFixed(2);
+                    
+                    // Logic: 2.05 Threshold
+                    const MEDIAN_THRESHOLD = 2.05;
+                    const isHighRisk = risk >= MEDIAN_THRESHOLD;
+
+                    // Text & Colors
+                    let color = isHighRisk ? "#ef4444" : "#10b981"; // Red or Green
+                    let label = isHighRisk ? "HIGH RISK" : "LOW RISK";
+                    let bg = isHighRisk ? "rgba(239, 68, 68, 0.2)" : "rgba(16, 185, 129, 0.2)";
+                    
+                    const badge = document.getElementById('heroBadge');
+
+                    badge.innerText = label;
+                    badge.style.backgroundColor = bg;
+                    badge.style.color = color;
+                    scoreText.style.color = color;
+                }
+
+                // 2. UPDATE CARDS GRID
+                if(!recData || recData.length === 0) {
+                    cardsGrid.innerHTML = `
+                        <div class="glass-card" style="text-align:center; padding:30px;">
+                            <p style="color:#ef4444; font-weight:600;">No matches found above ${parseFloat(threshold)*100}% similarity.</p>
+                            <p style="font-size:0.9rem; color:#64748b;">Try lowering the "Min Match" filter.</p>
+                        </div>`;
+                    return;
+                }
+                
+                let html = '<div class="results-grid">';
+                recData.forEach(job => {
+                    const taskDescription = job.task || "Representative task data not available.";
+                    html += `
+                        <div class="path-card-container">
+                            <div class="path-card-inner">
+                                <div class="path-card-front">
+                                    <div class="match-badge">${job.match_score.toFixed(0)}% Match</div>
+                                    <h4 style="margin:0; color:#1e293b; padding:0 10px;">${job.title}</h4>
+                                    <p style="margin:5px 0 15px 0; color:#64748b; font-size:0.85rem;">Safe Alternative</p>
+                                    <div class="safe-score">${job.score.toFixed(2)}</div>
+                                    <div style="font-size:0.8rem; font-weight:600; color:#10b981;">LOW RISK SCORE</div>
+                                </div>
+                                <div class="path-card-back">
+                                    <h3 style="margin-top:0; font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.3); padding-bottom:8px; width:100%;">What it does?</h3>
+                                    <div class="task-scroll">${taskDescription}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                html += '</div>';
+                cardsGrid.innerHTML = html;
+                
+            } catch(e) {
+                console.error(e);
+                cardsGrid.innerHTML = '<p style="text-align:center; color:red;">Server Error</p>';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadJobData();
+            setupAutocomplete();
+        });
+    </script>
+</body>
+</html>

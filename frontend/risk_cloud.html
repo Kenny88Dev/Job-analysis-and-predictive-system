@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Cloud Analysis - AI Workforce Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL LAYOUT --- */
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- SIDEBAR & MENU HOVER EFFECT (Matched to Predictor) --- */
+        .sidebar {
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 10;
+        }
+
+        .sidebar-content {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .brand-logo {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #1e293b;
+            text-decoration: none;
+            margin-bottom: 40px;
+            display: block;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        /* --- NAV BUTTON STYLES --- */
+        .nav-btn {
+            position: relative; 
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #64748b;
+            font-weight: 500;
+            border-radius: 0 8px 8px 0; 
+            border-left: 4px solid transparent; 
+            overflow: hidden; 
+            transition: all 0.3s ease;
+        }
+
+        /* Text Layering */
+        .nav-btn span, .nav-btn i {
+            position: relative;
+            z-index: 2; 
+        }
+
+        /* Slide-in Background */
+        .nav-btn::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0; 
+            background-color: #2563eb; 
+            z-index: 0; 
+            transition: width 0.3s ease-in-out; 
+        }
+
+        /* Hover State */
+        .nav-btn:hover {
+            color: white; 
+            border-left-color: #1d4ed8; 
+            padding-left: 24px; 
+        }
+
+        .nav-btn:hover::after {
+            width: 100%; 
+        }
+
+        /* Active State */
+        .nav-btn.active {
+            color: white; 
+            border-left-color: #2563eb;
+            background-color: transparent; 
+        }
+
+        .nav-btn.active::after {
+            width: 100%; /* Keep blue background persistent */
+        }
+
+        /* Footer */
+        .sidebar-footer {
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 20px;
+        }
+
+        .back-home-link {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s;
+        }
+        .back-home-link:hover { color: #1e293b; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 40px;
+        }
+
+        .content-header { margin-bottom: 32px; }
+        .content-header h1 {
+            font-size: 1.8rem;
+            color: #0f172a;
+            margin: 0 0 8px 0;
+        }
+        .content-header p {
+            color: #64748b;
+            margin-top: 0;
+        }
+
+        /* --- RISK CLOUD SPECIFIC STYLES --- */
+        .glass-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Fixed, rectangular container for visualizations */
+        .card .chart-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            height: 65vh;
+            min-height: 600px;
+            overflow: hidden;
+            position: relative;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.03) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(99,102,241,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Word cloud container fills the area */
+        #wordCloud {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Tooltip for word hover */
+        #wcTooltip {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(15,23,42,0.95);
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 9999;
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
+            display: none;
+        }
+
+        /* Scrollable Table Container */
+        .table-scroll-container {
+            width: 100%;
+            margin-top: 32px;
+            max-height: 480px; 
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        /* Custom Scrollbar for the table */
+        .table-scroll-container::-webkit-scrollbar { width: 8px; }
+        .table-scroll-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .table-scroll-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .table-scroll-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .toggle-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+        }
+        .toggle-btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body class="services-page">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <a href="homepage.html" class="brand-logo">Home Page
+                </a>
+
+                <nav class="sidebar-nav">
+                    <a href="predictor.html" class="nav-button nav-btn">
+                        <span>Predictor</span>
+                    </a>
+                    <a href="market_index.html" class="nav-button nav-btn">
+                        <span>Market Index</span>
+                    </a>
+                    <a href="risk_cloud.html" class="nav-button nav-btn active">
+                        <span>Risk Cloud</span>
+                    </a>
+                    <a href="leaderboard.html" class="nav-button nav-btn">
+                        <span>Leaderboard</span>
+                    </a>
+                    <a href="comparator.html" class="nav-button nav-btn">
+                        <span>Comparator</span>
+                    </a>
+                    <a href="pathfinder.html" class="nav-button nav-btn">
+                        <span>Pathfinder</span>
+                    </a>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <a href="homepage.html" class="back-home-link">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back Home</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Risk Pattern Analysis</h1>
+                <p>Explore key linguistic features and their correlation with automation risk.</p>
+            </div>
+
+            <div class="card glass-card" style="padding: 24px; border-radius: 16px; background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); box-shadow: 0 8px 32px rgba(0,0,0,0.08);">
+                <div class="toggle-group" style="margin-bottom: 12px; display:flex; gap:8px;">
+                    <button id="btnCloudHigh" class="toggle-btn active" onclick="loadWordCloud('high')" style="background-color: #ef4444; color: white;">
+                        High Risk
+                    </button>
+                    <button id="btnCloudLow" class="toggle-btn" onclick="loadWordCloud('low')" style="background-color: #10b981; color: white;">
+                        Low Risk
+                    </button>
+                </div>
+
+                <div class="chart-container">
+                    <div id="wordCloud"></div>
+                    <div id="wcTooltip"></div>
+                </div>
+                <p style="text-align: center; font-size: 0.85rem; color: #64748b; margin-top: 16px;">
+                    Top linguistic features associated with automation risk. Size represents importance.
+                </p>
+
+                <div class="table-scroll-container">
+                    <table id="wordTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead style="background-color: #f1f5f9; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10;">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: #334155;">#</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: #334155;">Word</th>
+                                <th style="padding: 12px; text-align: right; font-weight: 600; color: #334155;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wordTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Interactive word cloud
+        const wcTooltip = document.getElementById('wcTooltip');
+
+        function showTooltip(text, x, y) {
+            if (!wcTooltip) return;
+            wcTooltip.style.left = (x + 12) + 'px';
+            wcTooltip.style.top = (y - 12) + 'px';
+            wcTooltip.innerText = text;
+            wcTooltip.style.display = 'block';
+        }
+
+        function hideTooltip() {
+            if (!wcTooltip) return;
+            wcTooltip.style.display = 'none';
+        }
+
+        async function loadWordCloud(type) {
+            const container = document.getElementById('wordCloud');
+            if (!container) return;
+
+            // Update button visual states
+            const btnHigh = document.getElementById('btnCloudHigh');
+            const btnLow = document.getElementById('btnCloudLow');
+            if (btnHigh && btnLow) {
+                btnHigh.style.backgroundColor = type === 'high' ? '#ef4444' : '#cbd5e1';
+                btnLow.style.backgroundColor = type === 'low' ? '#10b981' : '#cbd5e1';
+                btnHigh.style.color = type === 'high' ? 'white' : '#64748b';
+                btnLow.style.color = type === 'low' ? 'white' : '#64748b';
+            }
+
+            try {
+                const res = await fetch(`http://127.0.0.1:5000/api/cloud?type=${type}`);
+                const data = await res.json(); 
+
+                const MAX_WORDS = 80;
+                const list = (data || []).slice(0, MAX_WORDS).map(item => ({ text: String(item[0]), weight: Number(item[1]) }));
+                if (!list.length) {
+                    container.innerHTML = '<p style="color:#64748b; text-align:center; padding:12px;">No data available.</p>';
+                    return;
+                }
+
+                // Clear previous
+                cancelFloatingAnimation();
+                container.innerHTML = '';
+
+                // Get container geometry
+                const rect = container.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+
+                // Scaling font sizes
+                const weights = list.map(l => l.weight);
+                const maxW = Math.max(...weights);
+                const minW = Math.min(...weights);
+                const minFont = 24; 
+                const maxFont = 85; 
+
+                // Create floating elements
+                const nodes = [];
+                list.forEach((it, i) => {
+                    const el = document.createElement('span');
+                    el.className = 'floating-word';
+                    el.textContent = it.text;
+                    const norm = (it.weight - minW) / (maxW - minW || 1);
+                    const size = Math.round(minFont + norm * (maxFont - minFont));
+                    el.style.position = 'absolute';
+                    el.style.fontSize = size + 'px';
+                    el.style.fontFamily = 'Inter, sans-serif';
+                    el.style.color = type === 'high' ? '#b91c1c' : '#047857';
+                    // UPDATED: Default cursor
+                    el.style.cursor = 'default';
+                    el.style.userSelect = 'none';
+                    el.style.whiteSpace = 'nowrap';
+                    el.dataset.weight = it.weight;
+                    container.appendChild(el);
+
+                    // measure dimensions after appending
+                    const b = el.getBoundingClientRect();
+                    const w = b.width;
+                    const h = b.height;
+
+                    // Random position inside rectangle avoiding edges
+                    const margin = 20; 
+                    const x = margin + w/2 + Math.random() * (width - w - 2 * margin);
+                    const y = margin + h/2 + Math.random() * (height - h - 2 * margin);
+
+                    // Velocity
+                    const vx = (Math.random() - 0.5) * 0.75; 
+                    const vy = (Math.random() - 0.5) * 0.75;
+
+                    nodes.push({ el, x, y, vx, vy, w, h, paused: false, text: it.text, weight: it.weight });
+                });
+
+                // Animation loop
+                let animId = null;
+                function step() {
+                    nodes.forEach(n => {
+                        if (n.paused) return;
+                        
+                        // Move
+                        n.x += n.vx;
+                        n.y += n.vy;
+
+                        // Add tiny random movement
+                        n.vx += (Math.random() - 0.5) * 0.05;
+                        n.vy += (Math.random() - 0.5) * 0.05;
+
+                        // Limit Max Speed
+                        const speed = Math.hypot(n.vx, n.vy);
+                        if (speed > 2.0) { n.vx *= 2.0 / speed; n.vy *= 2.0 / speed; }
+
+                        // EDGE COLLISION
+                        const halfW = n.w / 2;
+                        const halfH = n.h / 2;
+
+                        if (n.x - halfW < 0) { n.x = halfW; n.vx *= -1; }
+                        if (n.x + halfW > width) { n.x = width - halfW; n.vx *= -1; }
+                        if (n.y - halfH < 0) { n.y = halfH; n.vy *= -1; }
+                        if (n.y + halfH > height) { n.y = height - halfH; n.vy *= -1; }
+
+                        // Apply to DOM
+                        n.el.style.left = (n.x - halfW) + 'px';
+                        n.el.style.top = (n.y - halfH) + 'px';
+                    });
+                    animId = requestAnimationFrame(step);
+                }
+
+                // Hover handlers
+                const tooltip = document.getElementById('wcTooltip');
+                nodes.forEach(n => {
+                    n.el.addEventListener('mouseenter', (ev) => {
+                        n.paused = true;
+                        if (tooltip) {
+                            tooltip.innerText = `${n.text} — ${n.weight}`;
+                            tooltip.style.display = 'block';
+                            tooltip.style.left = (ev.clientX + 12) + 'px';
+                            tooltip.style.top = (ev.clientY - 12) + 'px';
+                        }
+                        n.el.style.transform = 'scale(1.08)';
+                        n.el.style.zIndex = 999;
+                    });
+                    n.el.addEventListener('mousemove', (ev) => {
+                        if (tooltip) {
+                            tooltip.style.left = (ev.clientX + 12) + 'px';
+                            tooltip.style.top = (ev.clientY - 12) + 'px';
+                        }
+                    });
+                    n.el.addEventListener('mouseleave', () => {
+                        n.paused = false;
+                        if (tooltip) tooltip.style.display = 'none';
+                        n.el.style.transform = 'scale(1)';
+                        n.el.style.zIndex = 'auto';
+                    });
+                });
+
+                // Start
+                animId = requestAnimationFrame(step);
+
+                // Store geometry
+                container.__floating = { nodes, animId, width, height };
+
+                function cancelFloatingAnimation() {
+                    if (container.__floating) {
+                        cancelAnimationFrame(container.__floating.animId);
+                        container.__floating.nodes.forEach(n => n.el.remove());
+                        container.__floating = null;
+                    }
+                }
+
+                container.__cancel = cancelFloatingAnimation;
+
+                // Populate table
+                const sortedList = [...list].sort((a, b) => b.weight - a.weight);
+                const tbody = document.getElementById('wordTableBody');
+                if (tbody) {
+                    tbody.innerHTML = '';
+                    sortedList.forEach((item, idx) => {
+                        const row = document.createElement('tr');
+                        row.style.borderBottom = '1px solid #e2e8f0';
+                        // UPDATED: Cursor default to remove text selection cursor
+                        row.style.cursor = 'default';
+                        row.style.transition = 'background-color 0.2s';
+                        row.addEventListener('mouseenter', () => row.style.backgroundColor = '#f8fafc');
+                        row.addEventListener('mouseleave', () => row.style.backgroundColor = 'transparent');
+                        row.innerHTML = `
+                            <td style="padding: 10px 12px; color: #64748b;">${idx + 1}</td>
+                            <td style="padding: 10px 12px; color: #1e293b; font-weight: 500;">${item.text}</td>
+                            <td style="padding: 10px 12px; text-align: right; color: ${type === 'high' ? '#b91c1c' : '#047857'}; font-weight: 600;">${Math.round(item.weight * 100) / 100}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+
+            } catch (e) {
+                console.error('Error loading word cloud:', e);
+                container.innerHTML = '<p style="color:red; padding:20px; text-align:center;">Failed to load word cloud.</p>';
+            }
+        }
+
+        function cancelFloatingAnimation() {
+            const container = document.getElementById('wordCloud');
+            if (container && container.__cancel) container.__cancel();
+        }
+
+        // Resize handling
+        let _resizeTimer = null;
+        window.addEventListener('resize', () => {
+            if (_resizeTimer) clearTimeout(_resizeTimer);
+            _resizeTimer = setTimeout(() => {
+                const container = document.getElementById('wordCloud');
+                if (!container || !container.__floating) return;
+                const f = container.__floating;
+                const rect = container.getBoundingClientRect();
+                const newWidth = rect.width;
+                const newHeight = rect.height;
+
+                const oldWidth = f.width || 1;
+                const oldHeight = f.height || 1;
+                const scaleX = newWidth / oldWidth;
+                const scaleY = newHeight / oldHeight;
+
+                f.nodes.forEach(n => {
+                    n.x = n.x * scaleX;
+                    n.y = n.y * scaleY;
+                    const currentSize = parseFloat(n.el.style.fontSize) || 18;
+                    n.el.style.fontSize = Math.max(10, Math.round(currentSize * Math.min(scaleX, scaleY))) + 'px';
+                    const b = n.el.getBoundingClientRect();
+                    n.w = b.width; n.h = b.height;
+                });
+
+                container.__floating.width = newWidth;
+                container.__floating.height = newHeight;
+            }, 180);
+        });
+
+        window.addEventListener('DOMContentLoaded', function() {
+            loadWordCloud('high');
+        });
+    </script>
+</body>
+</html>

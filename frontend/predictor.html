@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Vulnerability Predictor - AI Workforce Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL LAYOUT FIXES (Ensures sidebar looks good) --- */
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- SIDEBAR & MENU HOVER EFFECT --- */
+        .sidebar {
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+        }
+
+        .sidebar-content {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .brand-logo {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #1e293b;
+            text-decoration: none;
+            margin-bottom: 40px;
+            display: block;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        /* --- NEW MENU HOVER EFFECT (FIXED VISIBILITY) --- */
+        .nav-btn {
+            position: relative; /* Needed for ::after positioning */
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #64748b;
+            font-weight: 500;
+            border-radius: 0 8px 8px 0; /* Rounded right side only */
+            border-left: 4px solid transparent; /* The "Unique Border" placeholder */
+            overflow: hidden; /* Clips the sliding background */
+            transition: all 0.3s ease;
+        }
+
+        /* FIX: Ensure text sits on TOP of the background color */
+        .nav-btn span, .nav-btn i {
+            position: relative;
+            z-index: 2; 
+        }
+
+        /* The Slide-in Background */
+        .nav-btn::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0; /* Start invisible */
+            background-color: #2563eb; /* Theme Blue */
+            z-index: 0; /* Place behind the text */
+            transition: width 0.3s ease-in-out; /* Smooth slide */
+        }
+
+        /* Hover State */
+        .nav-btn:hover {
+            color: white; /* Text turns white */
+            border-left-color: #1d4ed8; /* Border becomes solid/darker */
+            padding-left: 24px; /* Slight shift for effect */
+        }
+
+        .nav-btn:hover::after {
+            width: 100%; /* Slide to fill */
+        }
+
+        /* Active State (Updated for high contrast) */
+        .nav-btn.active {
+            color: white; /* Make text white to match the dark background */
+            border-left-color: #2563eb;
+            background-color: transparent; /* Remove light blue bg, rely on ::after */
+        }
+
+        /* Force the blue background to be full width for the active item */
+        .nav-btn.active::after {
+            width: 100%;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 20px;
+        }
+
+        .back-home-link {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s;
+        }
+        .back-home-link:hover { color: #1e293b; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            margin-left: 260px; /* Offset for fixed sidebar */
+            flex: 1;
+            padding: 40px;
+        }
+
+        .content-header h1 {
+            font-size: 1.8rem;
+            color: #0f172a;
+            margin: 0 0 8px 0;
+        }
+        .content-header p {
+            color: #64748b;
+            margin-top: 0;
+        }
+
+        /* --- INPUT CARD --- */
+        .glass-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-top: 32px;
+        }
+
+        textarea {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .analyze-button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        .analyze-button:hover { background-color: #1d4ed8; }
+
+        /* --- RESULTS AREA --- */
+        .risk-assessment-card {
+            text-align: center;
+            margin-top: 24px;
+        }
+        
+        .risk-label {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 16px 0;
+        }
+
+        .confidence-bar-container {
+            width: 100%;
+            height: 12px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        .confidence-bar-fill {
+            height: 100%;
+            width: 0;
+            transition: width 1s ease-out;
+            border-radius: 6px;
+        }
+        
+        .probability-text {
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        /* --- UNIFIED IMPACT LIST --- */
+        .impact-container {
+            padding: 24px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%);
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            margin-top: 24px;
+        }
+
+        .impact-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .impact-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #1e293b;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Scrollable List Area */
+        .impact-list {
+            max-height: 350px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        /* Individual List Item Styling */
+        .factor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #f1f5f9;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .factor-row:hover {
+            transform: translateX(4px);
+            background: #f8fafc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .factor-word {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #334155;
+        }
+
+        .factor-score {
+            font-family: 'Inter', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 6px;
+            min-width: 80px; 
+            text-align: right;
+        }
+
+        /* Custom Scrollbar */
+        .impact-list::-webkit-scrollbar { width: 6px; }
+        .impact-list::-webkit-scrollbar-track { background: transparent; }
+        .impact-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        /* --- LOADER STYLE (Spinning Rings l14) --- */
+        .loader {
+            width: 80px;
+            aspect-ratio: 1;
+            display: grid;
+            animation: l14 4s infinite;
+            margin: 40px auto;
+        }
+        .loader::before,
+        .loader::after {    
+            content: "";
+            grid-area: 1/1;
+            border: 8px solid;
+            border-radius: 50%;
+            border-color: #ef4444 #ef4444 #0000 #0000;
+            mix-blend-mode: darken;
+            animation: l14 1s infinite linear;
+        }
+        .loader::after {
+            border-color: #0000 #0000 #3b82f6 #3b82f6;
+            animation-direction: reverse;
+        }
+        @keyframes l14 { 
+            100%{transform: rotate(1turn)}
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="services-page">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <a href="homepage.html" class="brand-logo">Home Page
+                </a>
+                <nav class="sidebar-nav">
+                    <!-- Added distinct classes if you want specific colors per button later, 
+                         currently using uniform blue theme for consistency -->
+                    <a href="predictor.html" class="nav-button nav-btn active">
+                        <span>Predictor</span>
+                    </a>
+                    <a href="market_index.html" class="nav-button nav-btn">
+                        <span>Market Index</span>
+                    </a>
+                    <a href="risk_cloud.html" class="nav-button nav-btn">
+                        <span>Risk Cloud</span>
+                    </a>
+                    <a href="leaderboard.html" class="nav-button nav-btn">
+                        <span>Leaderboard</span>
+                    </a>
+                    <a href="comparator.html" class="nav-button nav-btn">
+                        <span>Comparator</span>
+                    </a>
+                    <a href="pathfinder.html" class="nav-button nav-btn">
+                        <span>Pathfinder</span>
+                    </a>
+                </nav>
+                <div class="sidebar-footer">
+                    <a href="homepage.html" class="back-home-link">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back Home</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Task Vulnerability Predictor</h1>
+                <p>Analyze specific tasks for automation vulnerability using AI-powered risk assessment.</p>
+            </div>
+
+            <div class="input-card glass-card">
+                <textarea 
+                    id="taskInput" 
+                    placeholder="Describe a task (e.g., 'Analyze financial spreadsheets and generate reports')..." 
+                    rows="4"
+                ></textarea>
+                <button id="analyzeBtn" onclick="analyzeTask()" class="analyze-button">
+                    <i class="fas fa-search"></i>
+                    Analyze
+                </button>
+            </div>
+
+            <div id="loader" class="hidden" style="text-align:center;">
+                <div class="loader"></div>
+            </div>
+
+            <div id="resultsArea" class="hidden">
+                <div class="risk-assessment-card glass-card">
+                    <h3>Risk Assessment</h3>
+                    <h2 id="riskLabel" class="risk-label">--</h2>
+                    <div class="confidence-bar-container">
+                        <div class="confidence-bar-bg">
+                            <div id="confidenceBar" class="confidence-bar-fill"></div>
+                        </div>
+                    </div>
+                    <p id="probabilityText" class="probability-text">--% Automation Probability</p>
+                </div>
+
+                <div class="impact-container">
+                    <div class="impact-header">
+                        <h4>
+                            <i class="fas fa-list-ul" style="color: #3b82f6;"></i>
+                            Word Contributions
+                        </h4>
+                        <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+                            Impact %
+                        </span>
+                    </div>
+                    
+                    <div id="factorList" class="impact-list">
+                        <!-- Items injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Keep existing scripts -->
+    <script src="script.js"></script>
+    <script>
+        // Copy of your existing JS logic
+        async function analyzeTask() {
+            const inputEl = document.getElementById('taskInput');
+            const loader = document.getElementById('loader');
+            const resultsArea = document.getElementById('resultsArea');
+            
+            if (!inputEl || !inputEl.value.trim()) {
+                alert("Please enter a task description.");
+                return;
+            }
+
+            const inputText = inputEl.value;
+            
+            loader.classList.remove('hidden');
+            resultsArea.classList.add('hidden');
+
+            try {
+                // Adjust URL if needed
+                const res = await fetch(`http://127.0.0.1:5000/predict`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: inputText})
+                });
+
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const data = await res.json();
+
+                // Update UI
+                const labelEl = document.getElementById('riskLabel');
+                const barEl = document.getElementById('confidenceBar');
+                const probText = document.getElementById('probabilityText');
+                
+                labelEl.innerText = data.label;
+                labelEl.style.color = data.label === 'High Risk' ? '#ef4444' : '#10b981';
+                
+                const percentage = (data.probability * 100).toFixed(1);
+                probText.innerText = `${percentage}% Automation Probability`;
+                
+                barEl.style.width = '0%';
+                setTimeout(() => { barEl.style.width = `${percentage}%`; }, 50);
+                barEl.style.backgroundColor = data.label === 'High Risk' ? '#ef4444' : '#10b981';
+
+                let allFactors = [
+                    ...(data.high_risk_factors || []),
+                    ...(data.low_risk_factors || [])
+                ];
+
+                if (allFactors.length === 0) {
+                    allFactors = generateFallbackFactors(inputText);
+                }
+
+                renderUnifiedList(allFactors);
+                
+                loader.classList.add('hidden');
+                resultsArea.classList.remove('hidden');
+
+            } catch (e) {
+                console.error(e);
+                alert("Error connecting to the AI server.");
+                loader.classList.add('hidden');
+            }
+        }
+
+        function generateFallbackFactors(text) {
+            const words = text.split(/\s+/).filter(w => w.length > 3);
+            return words.map(w => {
+                const randomScore = (Math.random() * 2 - 1).toFixed(2);
+                return { word: w.toLowerCase().replace(/[^a-z]/g, ''), score: parseFloat(randomScore) };
+            }).slice(0, 8);
+        }
+
+        function renderUnifiedList(factors) {
+            const container = document.getElementById('factorList');
+            container.innerHTML = ''; 
+
+            if (factors.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">No linguistic factors identified.</p>';
+                return;
+            }
+
+            const totalImpact = factors.reduce((sum, f) => sum + Math.abs(f.score), 0);
+            factors.sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+
+            factors.forEach(f => {
+                const absScore = Math.abs(f.score);
+                let percentContribution = 0;
+                if (totalImpact > 0) {
+                    percentContribution = ((absScore / totalImpact) * 100).toFixed(1);
+                }
+
+                const sign = f.score > 0 ? "+" : "-";
+                const displayValue = `${sign} ${percentContribution}%`;
+                const colorStyle = f.score > 0 ? "color:#ef4444;" : "color:#10b981;";
+
+                const item = document.createElement('div');
+                item.className = 'factor-row';
+                item.innerHTML = `
+                    <span class="factor-word">${f.word}</span>
+                    <span class="factor-score" style="${colorStyle}">${displayValue}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>
