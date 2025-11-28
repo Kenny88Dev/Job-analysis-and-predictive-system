@@ -79,18 +79,6 @@ It features **Explainable AI (XAI)** integration via **SHAP**, allowing users to
    The server will start at http://127.0.0.1:5000.
 
 2. Launch the Frontend: Open homepage.html directly in your web browser.
-   📂 Project Structure
-    ├── ONET_PREPROCESSING_STEPS/   # Dataset and Model files
-    │   ├── MERGED_Industry.csv
-    │   └── best_model_roberta.keras
-    ├── FRONTEND/                   # Web Interface
-    │   ├── homepage.html
-    │   ├── predictor.html
-    │   ├── pathfinder.html
-    │   ├── style.css
-    │   └── script.js
-    ├── server_roberta_predictor.py # Flask Backend
-    └── README.md
 
 #####################################################
 
