@@ -49,27 +49,27 @@ It features **Explainable AI (XAI)** integration via **SHAP**, allowing users to
 1. Clone the Repository
    
 2. Create a Virtual Environment (Python 3.11 Recommended)
-   It is highly recommended to use Python 3.11 to avoid compatibility issues with TensorFlow 2.14.
-   # Windows
-   python -m venv venv
-   .\venv\Scripts\activate
+  * **It is highly recommended to use Python 3.11 to avoid compatibility issues with TensorFlow 2.14.
+  * **# Windows
+  * **python -m venv venv
+  * **.\venv\Scripts\activate
 
-   # Mac/Linux
-   python3 -m venv venv
-   source venv/bin/activate
+  * **# Mac/Linux
+  * **python3 -m venv venv
+  * **source venv/bin/activate
    
 3. Install Dependencies
-   Install the required packages. Note the specific versions for numpy and sentence-transformers to ensure stability.
-   pip install tensorflow==2.14.0
-   pip install sentence-transformers==2.7.0
-   pip install numpy<2.0
-   pip install shap==0.44.1
-   pip install pandas flask flask-cors scikit-learn
+   * **Install the required packages. Note the specific versions for numpy and sentence-transformers to ensure stability.
+   * **pip install tensorflow==2.14.0
+   * **pip install sentence-transformers==2.7.0
+   * **pip install numpy<2.0
+   * **pip install shap==0.44.1
+   * **pip install pandas flask flask-cors scikit-learn
 
 4. Data Setup
-   Ensure the O*NET CSV files are located in the ONET_PREPROCESSING_STEPS directory:
-   MERGED_Industry.csv
-   best_model_roberta.keras (Pre-trained model)
+   * **Ensure the O*NET CSV files are located in the ONET_PREPROCESSING_STEPS directory:
+   * **MERGED_Industry.csv
+   * **best_model_roberta.keras (Pre-trained model)
 
 ####################################################
 
