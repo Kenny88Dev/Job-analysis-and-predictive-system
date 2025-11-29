@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:5000';
+const API_URL = '';
 let marketChartInstance = null;
 let simulation = null; // Store D3 simulation
 let currentIndustryData = [];
@@ -702,4 +702,5 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 3. Other Pages
     loadMarketStats(); // Checks internally if elements exist
+
 });
