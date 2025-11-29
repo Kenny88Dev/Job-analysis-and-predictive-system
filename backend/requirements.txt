@@ -1,0 +1,9 @@
+flask
+flask-cors
+gunicorn
+tensorflow==2.14.0
+sentence-transformers==2.7.0
+numpy<2.0
+shap==0.44.1
+pandas
+scikit-learn
