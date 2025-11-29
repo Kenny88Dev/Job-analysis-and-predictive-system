@@ -3,13 +3,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
-from sentence_transformers import SentenceTransformer
-import shap
-from collections import Counter
-import re
-from sklearn.metrics.pairwise import cosine_similarity
-import tensorflow as tf 
 import math
+# NOTE: Heavy imports (TensorFlow, Shap, SentenceTransformer) are moved inside functions!
 
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
@@ -33,14 +28,12 @@ MODEL_DIR = os.path.join(ROOT_DIR, "predictor_model")
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
 
-# Global variables (Initialized as None)
+# Global variables
 df = None
 roberta_model = None  
 classifier = None     
 shap_explainer = None
 dashboard_stats = {}
-
-# Stop words
 STOP_WORDS = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now'}
 
 # --- HELPER FUNCTIONS ---
@@ -57,7 +50,6 @@ def get_data():
             df = pd.read_csv(csv_path)
             if 'Automation_Score' in df.columns:
                 df['Automation_Score'] = pd.to_numeric(df['Automation_Score'], errors='coerce').fillna(0.0)
-            # Pre-calculate stats once data is loaded
             precalculate_dashboard_stats() 
             return df
         except Exception as e:
@@ -65,9 +57,17 @@ def get_data():
     return pd.DataFrame()
 
 def get_models():
-    """Lazy loads AI models only when needed."""
+    """
+    SUPER LAZY LOADER: Imports heavy libraries ONLY when needed.
+    This allows the server to start instantly and pass Render's health check.
+    """
     global roberta_model, classifier, shap_explainer
     
+    # Import heavy libraries here (Local Scope)
+    from sentence_transformers import SentenceTransformer
+    import tensorflow as tf
+    import shap
+
     if roberta_model is None:
         print("⏳ Lazy Loading: RoBERTa Model...")
         try:
@@ -85,7 +85,6 @@ def get_models():
         except Exception as e:
             print(f"❌ Error loading Keras model: {e}")
 
-    # Setup SHAP only if models loaded successfully
     if shap_explainer is None and roberta_model and classifier:
         try:
             masker = shap.maskers.Text(r"\W+")
@@ -103,14 +102,9 @@ def get_models():
 def precalculate_dashboard_stats():
     global dashboard_stats, df
     if df is None or df.empty: return
-    
-    # Simple stats
     if 'Automation_Score' in df:
         global_avg = float(df['Automation_Score'].mean())
-        # Build a simple distribution
         counts, bins = np.histogram(df['Automation_Score'].dropna(), bins=50)
-        
-        # Risky Jobs
         top_risky = []
         if 'Title' in df:
             risks = df.groupby('Title')['Automation_Score'].agg(['mean', 'count']).reset_index()
@@ -122,13 +116,9 @@ def precalculate_dashboard_stats():
             'global_avg': global_avg,
             'distribution': {'bins': [float(b) for b in bins[:-1]], 'counts': [int(c) for c in counts]},
             'top_risky_jobs': top_risky,
-            'high_risk_words': [], # Skipping heavy word cloud processing for speed
+            'high_risk_words': [], 
             'low_risk_words': []
         }
-
-# --- INITIALIZE LIGHTWEIGHT DATA ONLY ---
-# We ONLY load the CSV on startup. AI models load later.
-get_data()
 
 # --- ROUTES ---
 
@@ -140,12 +130,12 @@ def serve_static(path): return send_from_directory(FRONTEND_DIR, path)
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats_route():
-    get_data() # Ensure data is loaded
+    get_data() 
     return jsonify(dashboard_stats)
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Load models NOW (First request will be slow, subsequent ones fast)
+    # Only NOW do we load the heavy AI models
     model, clf = get_models()
     
     if not model or not clf: 
@@ -196,6 +186,7 @@ def compare():
 
 @app.route('/api/recommend', methods=['POST'])
 def recommend():
+    from sklearn.metrics.pairwise import cosine_similarity # Import inside function
     df = get_data()
     model, _ = get_models()
     
@@ -207,7 +198,6 @@ def recommend():
     target_emb = model.encode([target])
     safe_df = df[df['Automation_Score'] < 2.05].drop_duplicates('Title')
     
-    # Optimization: Compute embeddings for safe jobs only once if possible (omitted for simplicity)
     safe_emb = model.encode(safe_df['Title'].tolist())
     
     sims = cosine_similarity(target_emb, safe_emb)[0]
@@ -219,4 +209,7 @@ def recommend():
     return jsonify(recs)
 
 if __name__ == '__main__':
+    # When running locally, we preload everything for convenience
+    get_data()
+    get_models()
     app.run(debug=True, host='0.0.0.0', port=5000)
