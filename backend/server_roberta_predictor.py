@@ -15,10 +15,27 @@ import math
 # 1. Define paths relative to this script
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # .../backend
 ROOT_DIR = os.path.dirname(BASE_DIR)                  # .../ (Root)
-FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
-DATA_DIR = os.path.join(ROOT_DIR, "ONET_FINAL_DATASET")
+
+# ROBUST PATH FINDING: Check for 'frontend' OR 'FRONTEND'
+if os.path.exists(os.path.join(ROOT_DIR, "frontend")):
+    FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
+elif os.path.exists(os.path.join(ROOT_DIR, "FRONTEND")):
+    FRONTEND_DIR = os.path.join(ROOT_DIR, "FRONTEND")
+else:
+    # Fallback to current directory if structure is different on deployment
+    FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
+    print(f"⚠️ WARNING: Could not find frontend folder at {FRONTEND_DIR}")
+
+# Same check for ONET_FINAL_DATASET vs ONET_DATASET
+if os.path.exists(os.path.join(ROOT_DIR, "ONET_FINAL_DATASET")):
+    DATA_DIR = os.path.join(ROOT_DIR, "ONET_FINAL_DATASET")
+else:
+    DATA_DIR = os.path.join(ROOT_DIR, "ONET_DATASET")
+
 MODEL_DIR = os.path.join(ROOT_DIR, "predictor_model")
 
+print(f"✅ SERVING FRONTEND FROM: {FRONTEND_DIR}")
+print(f"✅ LOADING DATA FROM: {DATA_DIR}")
 # 2. Initialize Flask with the frontend folder
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
@@ -254,3 +271,4 @@ if __name__ == '__main__':
     precalculate_dashboard_stats()
     # Use 0.0.0.0 for external access (e.g. Docker/Render)
     app.run(debug=True, host='0.0.0.0', port=5000)
+
