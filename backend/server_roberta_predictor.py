@@ -12,10 +12,10 @@ import tensorflow as tf
 import math
 
 # --- CONFIGURATION ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # .../backend
-ROOT_DIR = os.path.dirname(BASE_DIR)                  # .../ (Root)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
+ROOT_DIR = os.path.dirname(BASE_DIR)                  
 
-# Robust path finding for Frontend
+# Robust path finding
 if os.path.exists(os.path.join(ROOT_DIR, "frontend")):
     FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
 elif os.path.exists(os.path.join(ROOT_DIR, "FRONTEND")):
@@ -23,7 +23,6 @@ elif os.path.exists(os.path.join(ROOT_DIR, "FRONTEND")):
 else:
     FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
 
-# Robust path finding for Dataset
 if os.path.exists(os.path.join(ROOT_DIR, "ONET_FINAL_DATASET")):
     DATA_DIR = os.path.join(ROOT_DIR, "ONET_FINAL_DATASET")
 else:
@@ -34,7 +33,7 @@ MODEL_DIR = os.path.join(ROOT_DIR, "predictor_model")
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
 
-# Global variables
+# Global variables (Initialized as None)
 df = None
 roberta_model = None  
 classifier = None     
@@ -44,9 +43,13 @@ dashboard_stats = {}
 # Stop words
 STOP_WORDS = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now'}
 
-# --- LOADERS ---
-def load_data():
+# --- HELPER FUNCTIONS ---
+
+def get_data():
+    """Loads CSV data if not already loaded."""
     global df
+    if df is not None: return df
+    
     csv_path = os.path.join(DATA_DIR, "MERGED_Industry.csv")
     print(f"Loading dataset from: {csv_path}")
     if os.path.exists(csv_path):
@@ -54,69 +57,81 @@ def load_data():
             df = pd.read_csv(csv_path)
             if 'Automation_Score' in df.columns:
                 df['Automation_Score'] = pd.to_numeric(df['Automation_Score'], errors='coerce').fillna(0.0)
-            print(f"Dataset loaded. Shape: {df.shape}")
+            # Pre-calculate stats once data is loaded
+            precalculate_dashboard_stats() 
+            return df
         except Exception as e:
             print(f"Error loading CSV: {e}")
-            df = pd.DataFrame()
-    else:
-        print(f"Warning: CSV not found at {csv_path}")
-        df = pd.DataFrame()
+    return pd.DataFrame()
 
-def load_models():
-    global roberta_model, classifier
-    try:
-        print("Loading RoBERTa...")
-        roberta_model = SentenceTransformer('all-distilroberta-v1')
-        print("RoBERTa loaded.")
-    except Exception as e:
-        print(f"Error loading RoBERTa: {e}")
+def get_models():
+    """Lazy loads AI models only when needed."""
+    global roberta_model, classifier, shap_explainer
+    
+    if roberta_model is None:
+        print("⏳ Lazy Loading: RoBERTa Model...")
+        try:
+            roberta_model = SentenceTransformer('all-distilroberta-v1')
+            print("✅ RoBERTa loaded.")
+        except Exception as e:
+            print(f"❌ Error loading RoBERTa: {e}")
 
-    try:
-        model_path = os.path.join(MODEL_DIR, "best_model_roberta_v2.keras")
-        print(f"Loading Keras model from: {model_path}")
-        classifier = tf.keras.models.load_model(model_path)
-        print("Keras model loaded.")
-    except Exception as e:
-        print(f"Error loading Keras model: {e}")
+    if classifier is None:
+        print("⏳ Lazy Loading: Keras Model...")
+        try:
+            model_path = os.path.join(MODEL_DIR, "best_model_roberta_v2.keras")
+            classifier = tf.keras.models.load_model(model_path)
+            print("✅ Keras model loaded.")
+        except Exception as e:
+            print(f"❌ Error loading Keras model: {e}")
 
-def setup_shap_explainer():
-    global shap_explainer
-    if roberta_model is None or classifier is None: return
-    try:
-        print("Setting up SHAP...")
-        masker = shap.maskers.Text(r"\W+")
-        def model_predict(texts):
-            try:
+    # Setup SHAP only if models loaded successfully
+    if shap_explainer is None and roberta_model and classifier:
+        try:
+            masker = shap.maskers.Text(r"\W+")
+            def model_predict(texts):
                 if isinstance(texts, str): texts = [texts]
                 emb = roberta_model.encode(texts)
                 pred = classifier.predict(emb, verbose=0)
                 return np.hstack((1 - pred, pred))
-            except: return np.array([[0.5, 0.5]] * len(texts))
-        shap_explainer = shap.Explainer(model_predict, masker)
-        print("SHAP initialized.")
-    except Exception as e:
-        print(f"Error setting up SHAP: {e}")
+            shap_explainer = shap.Explainer(model_predict, masker)
+            print("✅ SHAP initialized.")
+        except: pass
+    
+    return roberta_model, classifier
 
 def precalculate_dashboard_stats():
-    global dashboard_stats
+    global dashboard_stats, df
     if df is None or df.empty: return
-    print("Calculating dashboard stats...")
-    # (Simplified logic for startup speed)
+    
+    # Simple stats
     if 'Automation_Score' in df:
         global_avg = float(df['Automation_Score'].mean())
-        dashboard_stats['global_avg'] = global_avg
-    print("Stats ready.")
+        # Build a simple distribution
+        counts, bins = np.histogram(df['Automation_Score'].dropna(), bins=50)
+        
+        # Risky Jobs
+        top_risky = []
+        if 'Title' in df:
+            risks = df.groupby('Title')['Automation_Score'].agg(['mean', 'count']).reset_index()
+            risks = risks.sort_values('mean', ascending=False).head(50)
+            for _, r in risks.iterrows():
+                top_risky.append({'Title': str(r['Title']), 'Automation_Score': float(r['mean'])})
+        
+        dashboard_stats = {
+            'global_avg': global_avg,
+            'distribution': {'bins': [float(b) for b in bins[:-1]], 'counts': [int(c) for c in counts]},
+            'top_risky_jobs': top_risky,
+            'high_risk_words': [], # Skipping heavy word cloud processing for speed
+            'low_risk_words': []
+        }
 
-# --- INITIALIZE ON STARTUP ---
-# This ensures Gunicorn loads everything when it starts the worker
-print("🔄 SERVER STARTUP: Initializing...")
-load_data()
-load_models()
-setup_shap_explainer()
-precalculate_dashboard_stats()
-print("✅ SERVER STARTUP: Complete.")
+# --- INITIALIZE LIGHTWEIGHT DATA ONLY ---
+# We ONLY load the CSV on startup. AI models load later.
+get_data()
 
 # --- ROUTES ---
+
 @app.route('/')
 def index(): return app.send_static_file('homepage.html')
 
@@ -124,16 +139,26 @@ def index(): return app.send_static_file('homepage.html')
 def serve_static(path): return send_from_directory(FRONTEND_DIR, path)
 
 @app.route('/api/stats', methods=['GET'])
-def get_stats(): return jsonify(dashboard_stats)
+def get_stats_route():
+    get_data() # Ensure data is loaded
+    return jsonify(dashboard_stats)
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if not roberta_model or not classifier: return jsonify({'error': 'Models loading'}), 503
+    # Load models NOW (First request will be slow, subsequent ones fast)
+    model, clf = get_models()
+    
+    if not model or not clf: 
+        return jsonify({'error': 'Models failed to load'}), 503
+    
     try:
         text = request.get_json().get('text', '')
-        emb = roberta_model.encode([text])
-        prob = float(classifier.predict(emb, verbose=0)[0][0])
+        if not text: return jsonify({'error': 'No text'}), 400
+        
+        emb = model.encode([text])
+        prob = float(clf.predict(emb, verbose=0)[0][0])
         label = "High Risk" if prob >= 0.5 else "Low Risk"
+        
         high_f, low_f = [], []
         if shap_explainer:
             try:
@@ -145,12 +170,14 @@ def predict():
                 high_f = [f for f in factors if f['score'] > 0]
                 low_f = [f for f in factors if f['score'] < 0]
             except: pass
+            
         return jsonify({'label': label, 'probability': prob, 'high_risk_factors': high_f, 'low_risk_factors': low_f})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/api/jobs_by_industry', methods=['GET'])
 def get_jobs_by_industry():
-    if df is None: return jsonify({'jobs': []})
+    df = get_data()
+    if df.empty: return jsonify({'jobs': []})
     name = request.args.get('name', '').strip()
     try:
         return jsonify({'jobs': df[df['Industry'] == name]['Title'].unique().tolist()})
@@ -158,7 +185,8 @@ def get_jobs_by_industry():
 
 @app.route('/api/compare', methods=['POST'])
 def compare():
-    if df is None: return jsonify({'error': 'No Data'}), 500
+    df = get_data()
+    if df.empty: return jsonify({'error': 'No Data'}), 500
     q = request.get_json().get('query', '').strip()
     matches = df[df['Title'].astype(str).str.contains(q, case=False, na=False)]
     if matches.empty: return jsonify({'found': False, 'title': q, 'risk': 0.0})
@@ -168,12 +196,21 @@ def compare():
 
 @app.route('/api/recommend', methods=['POST'])
 def recommend():
-    if df is None or not roberta_model: return jsonify({'error': 'Not ready'}), 503
+    df = get_data()
+    model, _ = get_models()
+    
+    if df.empty or not model: return jsonify({'error': 'Not ready'}), 503
+    
     target = request.get_json().get('job_title', '').strip()
     thresh = request.get_json().get('threshold', 0.25)
-    t_emb = roberta_model.encode([target])
+    
+    target_emb = model.encode([target])
     safe_df = df[df['Automation_Score'] < 2.05].drop_duplicates('Title')
-    sims = cosine_similarity(t_emb, roberta_model.encode(safe_df['Title'].tolist()))[0]
+    
+    # Optimization: Compute embeddings for safe jobs only once if possible (omitted for simplicity)
+    safe_emb = model.encode(safe_df['Title'].tolist())
+    
+    sims = cosine_similarity(target_emb, safe_emb)[0]
     recs = []
     for idx in sims.argsort()[::-1]:
         if sims[idx] < thresh: break
