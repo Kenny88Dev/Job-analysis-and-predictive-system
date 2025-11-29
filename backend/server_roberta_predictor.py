@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
@@ -11,8 +11,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 import tensorflow as tf 
 import math
 
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+# --- CONFIGURATION ---
+# 1. Define paths relative to this script
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # .../backend
+ROOT_DIR = os.path.dirname(BASE_DIR)                  # .../ (Root)
+FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
+DATA_DIR = os.path.join(ROOT_DIR, "ONET_FINAL_DATASET")
+MODEL_DIR = os.path.join(ROOT_DIR, "predictor_model")
+
+# 2. Initialize Flask with the frontend folder
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
+CORS(app)
 
 # Global variables
 df = None
@@ -32,42 +41,16 @@ STOP_WORDS = {
     'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now'
 }
 
-# --- HELPER: Find Project Root ---
-def get_project_root():
-    """
-    Returns the root directory of the project.
-    Assumes this script is inside a subfolder (e.g., /backend).
-    """
-    current_script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go up one level to find the root where 'ONET_FINAL_DATASET' lives
-    return os.path.dirname(current_script_dir)
-
 def load_data():
-    """Load the dataset dynamically relative to project root."""
     global df
-    base_dir = get_project_root()
-    
-    # Path to your main dataset folder
-    # NOTE: Ensure your repo folder name matches exactly (ONET_FINAL_DATASET or ONET_DATASET)
-    dataset_folder = os.path.join(base_dir, "ONET_FINAL_DATASET")
-    
-    # Fallback check if folder wasn't found (common in local vs deployment structures)
-    if not os.path.exists(dataset_folder):
-        print(f"DEBUG: Dataset folder not found at {dataset_folder}, trying current dir...")
-        dataset_folder = os.path.join(os.getcwd(), "ONET_FINAL_DATASET")
-
-    csv_path = os.path.join(dataset_folder, "MERGED_Industry.csv")
-    
+    csv_path = os.path.join(DATA_DIR, "MERGED_Industry.csv")
     print(f"Loading dataset from: {csv_path}")
     
     if os.path.exists(csv_path):
         try:
             df = pd.read_csv(csv_path)
-            
-            # Ensure Automation_Score is numeric
             if 'Automation_Score' in df.columns:
                 df['Automation_Score'] = pd.to_numeric(df['Automation_Score'], errors='coerce').fillna(0.0)
-            
             print(f"Dataset loaded successfully. Shape: {df.shape}")
             return True
         except Exception as e:
@@ -80,13 +63,11 @@ def load_data():
         return False
 
 def load_models():
-    """Load RoBERTa and Keras Models dynamically."""
     global roberta_model, classifier
-    base_dir = get_project_root()
     
-    # 1. Load RoBERTa (Downloads automatically, no path needed)
+    # 1. Load RoBERTa
     try:
-        print("Loading RoBERTa model (all-distilroberta-v1)...")
+        print("Loading RoBERTa model...")
         roberta_model = SentenceTransformer('all-distilroberta-v1')
         print("RoBERTa model loaded successfully.")
     except Exception as e:
@@ -95,17 +76,8 @@ def load_models():
     
     # 2. Load Keras Model
     try:
-        # Path to your model folder
-        model_folder = os.path.join(base_dir, "predictor_model")
-        
-        # Fallback check
-        if not os.path.exists(model_folder):
-             model_folder = os.path.join(os.getcwd(), "predictor_model")
-             
-        model_path = os.path.join(model_folder, "best_model_roberta_v2.keras")
+        model_path = os.path.join(MODEL_DIR, "best_model_roberta_v2.keras")
         print(f"Loading Keras classifier from: {model_path}")
-        
-        # Standard Loading (No hacks needed if envs match)
         classifier = tf.keras.models.load_model(model_path)
         print("Keras Neural Network loaded successfully.")
     except Exception as e:
@@ -113,15 +85,12 @@ def load_models():
         classifier = None
 
 def setup_shap_explainer():
-    """Initialize SHAP explainer."""
     global shap_explainer
     if roberta_model is None or classifier is None:
         return
-    
     try:
         print("Setting up SHAP explainer...")
         masker = shap.maskers.Text(r"\W+")
-        
         def model_predict(texts):
             try:
                 if isinstance(texts, str): texts = [texts]
@@ -130,7 +99,6 @@ def setup_shap_explainer():
                 return np.hstack((1 - preds_1d, preds_1d))
             except:
                 return np.array([[0.5, 0.5]] * len(texts))
-        
         shap_explainer = shap.Explainer(model_predict, masker)
         print("SHAP explainer initialized successfully.")
     except Exception as e:
@@ -138,16 +106,12 @@ def setup_shap_explainer():
         shap_explainer = None
 
 def precalculate_dashboard_stats():
-    """Pre-calculate stats for the dashboard."""
     global dashboard_stats
-    
-    if df is None or df.empty:
+    if df is None or df.empty or 'Automation_Score' not in df.columns:
         dashboard_stats = {'global_avg': 0.0, 'distribution': {'bins': [], 'counts': []}, 'top_risky_jobs': [], 'industry_stats': [], 'high_risk_words': [], 'low_risk_words': []}
         return
     
     print("Pre-calculating dashboard statistics...")
-    if 'Automation_Score' not in df.columns: return
-
     global_avg = float(df['Automation_Score'].mean())
     counts, bins = np.histogram(df['Automation_Score'].dropna(), bins=50)
     distribution = {'bins': [float(b) for b in bins[:-1]], 'counts': [int(c) for c in counts]}
@@ -157,54 +121,59 @@ def precalculate_dashboard_stats():
         job_risks = df.groupby('Title')['Automation_Score'].agg(['mean', 'count']).reset_index()
         job_risks = job_risks.sort_values('mean', ascending=False).head(1000)
         for _, row in job_risks.iterrows():
-            val = float(row['mean']) if not math.isnan(row['mean']) else 0.0
-            top_risky_jobs.append({'Title': str(row['Title']), 'Automation_Score': val, 'count': int(row['count'])})
+            top_risky_jobs.append({'Title': str(row['Title']), 'Automation_Score': float(row['mean']), 'count': int(row['count'])})
             
     industry_stats = []
     if 'Industry' in df.columns:
         ind_stats = df.groupby('Industry').agg({'Automation_Score': 'mean', 'Title': 'nunique'}).reset_index()
-        ind_stats = ind_stats.sort_values('mean_score', ascending=False)
+        ind_stats = ind_stats.sort_values('Automation_Score', ascending=False)
         for _, row in ind_stats.iterrows():
-            val = float(row['mean_score']) if not math.isnan(row['mean_score']) else 0.0
-            industry_stats.append({'Industry': str(row['Industry']), 'Automation_Score': val, 'count': int(row['unique_jobs'])})
+            industry_stats.append({'Industry': str(row['Industry']), 'Automation_Score': float(row['Automation_Score']), 'count': int(row['Title'])})
 
-    high_risk_words = []
-    low_risk_words = []
+    high_risk_words, low_risk_words = [], []
     if 'Task' in df.columns:
-        threshold = df['Automation_Score'].median()
-        high_tasks = df[df['Automation_Score'] >= threshold]['Task'].dropna()
-        low_tasks = df[df['Automation_Score'] < threshold]['Task'].dropna()
+        median_score = df['Automation_Score'].median()
+        high_tasks = df[df['Automation_Score'] >= median_score]['Task'].dropna()
+        low_tasks = df[df['Automation_Score'] < median_score]['Task'].dropna()
         
-        def get_top_words(tasks):
+        def get_words(tasks):
             words = []
             for t in tasks:
-                words.extend([w for w in re.findall(r'\b[a-z]+\b', str(t).lower()) if w not in STOP_WORDS and len(w) > 2])
+                words.extend([w for w in re.findall(r'\b[a-z]+\b', str(t).lower()) if w not in STOP_WORDS and len(w)>2])
             return [[w, c] for w, c in Counter(words).most_common(80)]
-
-        high_risk_words = get_top_words(high_tasks)
-        low_risk_words = get_top_words(low_tasks)
+            
+        high_risk_words = get_words(high_tasks)
+        low_risk_words = get_words(low_tasks)
     
     dashboard_stats = {
-        'global_avg': global_avg, 'distribution': distribution,
-        'top_risky_jobs': top_risky_jobs, 'industry_stats': industry_stats,
-        'high_risk_words': high_risk_words, 'low_risk_words': low_risk_words
+        'global_avg': global_avg, 'distribution': distribution, 'top_risky_jobs': top_risky_jobs,
+        'industry_stats': industry_stats, 'high_risk_words': high_risk_words, 'low_risk_words': low_risk_words
     }
     print("Dashboard stats ready.")
 
-# --- API ENDPOINTS ---
+# --- WEB ROUTES (SERVE HTML) ---
+
+@app.route('/')
+def index():
+    # Serves the homepage when people visit the main URL
+    return app.send_static_file('homepage.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    # Serves other HTML/CSS/JS files
+    return send_from_directory(FRONTEND_DIR, path)
+
+# --- API ROUTES ---
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if roberta_model is None or classifier is None:
-        return jsonify({'error': 'Models not loaded'}), 500
+    if roberta_model is None or classifier is None: return jsonify({'error': 'Models not loaded'}), 500
     try:
         text = request.get_json().get('text', '')
         if not text: return jsonify({'error': 'No text'}), 400
-        
         emb = roberta_model.encode([text])
         prob = float(classifier.predict(emb, verbose=0)[0][0])
         label = "High Risk" if prob >= 0.5 else "Low Risk"
-        
         high_f, low_f = [], []
         if shap_explainer:
             try:
@@ -216,7 +185,6 @@ def predict():
                 high_f = [f for f in factors if f['score'] > 0]
                 low_f = [f for f in factors if f['score'] < 0]
             except: pass
-
         return jsonify({'label': label, 'probability': prob, 'high_risk_factors': high_f, 'low_risk_factors': low_f})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
@@ -239,37 +207,32 @@ def get_jobs_by_industry():
     except: return jsonify({'jobs': []}), 500
 
 @app.route('/api/compare', methods=['POST'])
-def compare_job():
+def compare():
     if df is None: return jsonify({'error': 'No Data'}), 500
     try:
         q = request.get_json().get('query', '').strip()
         if not q: return jsonify({'error': 'No query'}), 400
         matches = df[df['Title'].astype(str).str.contains(q, case=False, na=False)]
         if matches.empty: return jsonify({'found': False, 'title': q, 'risk': 0.0})
-        
         avg_risk = float(matches['Automation_Score'].mean())
         if math.isnan(avg_risk): avg_risk = 0.0
-        
         task = str(matches['Task'].dropna().iloc[0]) if not matches['Task'].dropna().empty else "No details"
         return jsonify({'found': True, 'title': str(matches['Title'].iloc[0]), 'risk': avg_risk, 'task_count': len(matches), 'task': task})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/api/recommend', methods=['POST'])
-def recommend_jobs():
+def recommend():
     if df is None or roberta_model is None: return jsonify({'error': 'Not ready'}), 500
     try:
         data = request.get_json()
         target = data.get('job_title', '').strip()
         thresh = data.get('threshold', 0.25)
         if not target: return jsonify([])
-        
         target_emb = roberta_model.encode([target])
         safe_df = df[df['Automation_Score'] < 2.05].drop_duplicates('Title') if 'Automation_Score' in df else pd.DataFrame()
         if safe_df.empty: return jsonify([])
-        
         safe_emb = roberta_model.encode(safe_df['Title'].tolist())
         sims = cosine_similarity(target_emb, safe_emb)[0]
-        
         recs = []
         for idx in sims.argsort()[::-1]:
             if sims[idx] < thresh: break
